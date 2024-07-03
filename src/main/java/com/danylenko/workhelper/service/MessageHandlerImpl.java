@@ -7,6 +7,8 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
+import java.util.List;
+
 
 @Service
 @Slf4j
@@ -32,7 +34,12 @@ public class MessageHandlerImpl implements MessageHandler {
         if (messageText.equals("Перевірити statusCode аукціону")) {
             log.info("{} {} is checking auction status", userId, username);
             responseText = notificationService.manualCheckApiResponse();
-        } else responseText = "Невідома команда";
+        }
+
+        if (messageText.equals("Перевірити к-сть обʼєктів")) {
+            List<String> dates = List.of("2022-01-01", "2022-01-02", "2022-01-03");
+            responseText = notificationService.checkObjectCount();
+        } //else responseText = "Невідома команда";
 
         return responseText;
     }

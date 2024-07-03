@@ -1,5 +1,7 @@
 package com.danylenko.workhelper.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
@@ -63,5 +65,32 @@ public class NotificationServiceImpl implements NotificationService {
                 throw new RuntimeException(e);
             }
             return responseBody;
+    }
+
+    public String checkObjectCount() {
+        String responseBody = null;
+        int objectCount = 0;
+        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
+            String url = "https://procedure.prozorro.sale/api/search/bySystemDateModified/2022-01-01";
+            HttpGet request = new HttpGet(url);
+            try (CloseableHttpResponse response = httpClient.execute(request)) {
+                log.info("Successfully made request to {}", url);
+                responseBody = new String(response.getEntity().getContent().readAllBytes());
+
+                // Parse JSON response and count objects
+                ObjectMapper objectMapper = new ObjectMapper();
+                JsonNode jsonNode = objectMapper.readTree(responseBody);
+                objectCount = jsonNode.size();
+                log.info("Object count is {}", objectCount);
+
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return String.valueOf(objectCount);
     }
 }

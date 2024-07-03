@@ -6,4 +6,5 @@ public interface NotificationService {
 
     void checkApiResponse();
     String manualCheckApiResponse();
+    String checkObjectCount();
 }

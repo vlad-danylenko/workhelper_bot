@@ -19,7 +19,9 @@ public class KeyboardServiceImpl implements KeyboardService {
         row1.add(new KeyboardButton("Перевірити statusCode аукціону"));
         keyboardRows.add(row1);
 
-        
+        KeyboardRow row2 = new KeyboardRow();
+        row2.add(new KeyboardButton("Перевірити к-сть обʼєктів"));
+        keyboardRows.add(row2);
 
         replyKeyboardMarkup.setKeyboard(keyboardRows);
         replyKeyboardMarkup.setResizeKeyboard(true); // робить клавіатуру адаптивною
