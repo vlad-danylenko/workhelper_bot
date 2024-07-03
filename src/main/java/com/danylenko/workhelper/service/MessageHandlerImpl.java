@@ -7,9 +7,6 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
-import java.time.LocalDate;
-import java.time.format.DateTimeParseException;
-import java.util.List;
 
 @Service
 @Slf4j
