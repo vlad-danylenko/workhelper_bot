@@ -23,6 +23,10 @@ public class KeyboardServiceImpl implements KeyboardService {
         row2.add(new KeyboardButton("Перевірити к-сть обʼєктів"));
         keyboardRows.add(row2);
 
+        KeyboardRow row3 = new KeyboardRow();
+        row3.add(new KeyboardButton("Перевірити поточний баланс"));
+        keyboardRows.add(row3);
+
         replyKeyboardMarkup.setKeyboard(keyboardRows);
         replyKeyboardMarkup.setResizeKeyboard(true); // робить клавіатуру адаптивною
 

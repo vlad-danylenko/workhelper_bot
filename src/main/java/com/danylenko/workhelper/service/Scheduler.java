@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class Scheduler {
-    private final NotificationServiceImpl notificationService;
+    private final ProzorroServiceImpl notificationService;
     //@Scheduled(cron = "0 0 11 * * ?")
     //@Scheduled(cron = "0 */2 * * * ?")
 
