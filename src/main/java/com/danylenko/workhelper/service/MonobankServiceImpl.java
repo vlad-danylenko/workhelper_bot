@@ -1,12 +1,12 @@
 package com.danylenko.workhelper.service;
 
 import com.danylenko.workhelper.model.TelegramKey;
-import com.danylenko.workhelper.repository.ObjectCountRepository;
 import com.danylenko.workhelper.repository.TelegramKeyRepository;
+import com.danylenko.workhelper.service.enums.CardType;
+import com.danylenko.workhelper.service.util.EpochConverter;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
@@ -25,6 +25,8 @@ public class MonobankServiceImpl implements MonobankService {
     private static final String API_URL = "https://api.monobank.ua/personal/client-info";
     @Autowired
     private MessageService messageService;
+    @Autowired
+    private EpochConverter epochConverter;
 
     private final TelegramKeyRepository telegramKeyRepository;
 
@@ -35,12 +37,10 @@ public class MonobankServiceImpl implements MonobankService {
 
     public String checkMonoBalance(long userId) {
         String formattedBalance = null;
-        int platinumBalance = 0;
         int totalSum = 0;
         String apiKey = defineApiKey(userId);
         StringBuilder responseBuilder = new StringBuilder("Поточний баланс по гривневих картках:\n");
         if (apiKey == null) {
-            System.out.println("Заходимо в іф");
             System.out.println("No API key found for user ID: " + userId);
             return formattedBalance = "Ви не додали свій ключ. Відвідайте сайт https://api.monobank.ua/ та надішліть свій токен";
         }
@@ -54,48 +54,35 @@ public class MonobankServiceImpl implements MonobankService {
                 JsonObject jsonObject = new Gson().fromJson(jsonResponse, JsonObject.class);
                 JsonArray accounts = jsonObject.getAsJsonArray("accounts");
 
-                int creditBalance = 0;
-                boolean platinumAccountFound = false;
-
-
                 for (int i = 0; i < accounts.size(); i++) {
                     JsonObject account = accounts.get(i).getAsJsonObject();
-                    String type = account.get("type").getAsString();
+                    String cardTypeApi = account.get("type").getAsString();
+                    String cardType = CardType.getDisplayName(cardTypeApi);
                     int currencyCode = account.get("currencyCode").getAsInt();
+                    int creditLimit = account.get("creditLimit").getAsInt();
 
                     if (currencyCode == 980) {
                         int balance = account.get("balance").getAsInt();
+                        if (creditLimit > 0) {
+                            balance -= creditLimit;
+                        }
                         totalSum += balance;
-                        responseBuilder.append(type)
+                        responseBuilder.append(cardType)
                                 .append(": ")
                                 .append(formatBalance(balance))
+                                .append(" грн.")
                                 .append("\n");
                     }
 
-
-//                    if ("platinum".equalsIgnoreCase(type)) {
-//                        platinumBalance = account.get("balance").getAsInt();
-//                        //creditBalance = account.get("creditLimit").getAsInt();
-//                        platinumAccountFound = true;
-//                        break;
-//                    }
                 }
                 formattedBalance = formatBalance(totalSum);
                 responseBuilder.append("\nЗагальний баланс по всім карткам: ")
-                        .append(formattedBalance);
-
-//                if (platinumAccountFound) {
-//                    // platinumBalance -= creditBalance;
-//                    formattedBalance = formatBalance(platinumBalance);
-//                    System.out.println("Platinum Account Balance: " + formattedBalance);
-//                } else {
-//                    System.out.println("No platinum account found");
-//                }
+                        .append(formattedBalance)
+                        .append(" грн.");
             }
         } catch (IOException | ParseException e) {
             e.printStackTrace();
         }
-//        return "Поточний баланс по всім UAH картам: " + formattedBalance;
         return responseBuilder.toString();
     }
 
@@ -142,6 +129,44 @@ public class MonobankServiceImpl implements MonobankService {
     private String defineApiKey(long userId) {
         TelegramKey telegramKey = telegramKeyRepository.findByUserId(String.valueOf(userId));
         return telegramKey != null ? telegramKey.getApiKey() : null;
+    }
+
+    public String checkSpendsCurrentMonth (long userId) {
+        String formattedBalance = null;
+        int totalSum = 0;
+        String apiKey = defineApiKey(userId);
+        long timestamp = epochConverter.getTimeFromFirstDayOfMonth();
+        String apiSpendUrl = "https://api.monobank.ua/personal/statement/0/" + timestamp;
+        log.info("Generated link: {}",apiSpendUrl);
+        StringBuilder responseBuilder = new StringBuilder("Сума витрат в цьому місяці:\n");
+        if (apiKey == null) {
+            System.out.println("No API key found for user ID: " + userId);
+            return formattedBalance = "Ви не додали свій ключ. Відвідайте сайт https://api.monobank.ua/ та надішліть свій токен";
+        }
+
+        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
+            HttpGet request = new HttpGet(apiSpendUrl);
+            request.addHeader("X-TOKEN", apiKey);
+
+            try (CloseableHttpResponse response = httpClient.execute(request)) {
+                String jsonResponse = EntityUtils.toString(response.getEntity());
+                JsonArray operations = new Gson().fromJson(jsonResponse, JsonArray.class);
+
+
+                for (int i = 0; i < operations.size(); i++) {
+                    JsonObject operation = operations.get(i).getAsJsonObject();
+                    int operationAmount = operation.get("operationAmount").getAsInt();
+                    totalSum += operationAmount;
+                }
+                formattedBalance = formatBalance(totalSum);
+                responseBuilder
+                        .append(formattedBalance)
+                        .append(" грн.");
+            }
+        } catch (IOException | ParseException e) {
+            e.printStackTrace();
+        }
+        return responseBuilder.toString();
     }
 
 

@@ -71,6 +71,13 @@ public class MessageHandlerImpl implements MessageHandler {
             }
         }
 
+        if (messageText.equals("Витрати в поточному місяці")) {
+            responseText = monobankService.checkSpendsCurrentMonth(userId);
+            if (responseText.contains("Ви не додали свій ключ.")) {
+                usersWaitingApiKey.add(userId);
+            }
+        }
+
 
 
         if (messageText.equals("/stop")) {

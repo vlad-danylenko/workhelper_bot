@@ -4,4 +4,5 @@ public interface MonobankService {
     String checkMonoBalance(long userId);
     void addApiKey(long userId, String apiKey);
     boolean isValidApiKey(String apiKey);
+    String checkSpendsCurrentMonth(long userId);
 }

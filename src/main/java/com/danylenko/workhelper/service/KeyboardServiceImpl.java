@@ -27,6 +27,10 @@ public class KeyboardServiceImpl implements KeyboardService {
         row3.add(new KeyboardButton("Перевірити поточний баланс"));
         keyboardRows.add(row3);
 
+        KeyboardRow row4 = new KeyboardRow();
+        row4.add(new KeyboardButton("Витрати в поточному місяці"));
+        keyboardRows.add(row4);
+
         replyKeyboardMarkup.setKeyboard(keyboardRows);
         replyKeyboardMarkup.setResizeKeyboard(true); // робить клавіатуру адаптивною
 
