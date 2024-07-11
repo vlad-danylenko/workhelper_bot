@@ -31,63 +31,72 @@ public class MessageHandlerImpl implements MessageHandler {
         long userId = update.getMessage().getFrom().getId();
         String username = update.getMessage().getFrom().getUserName();
         log.info("{} {} sent text: \"{}\"",userId,username,messageText);
-        String responseText = "";
 
-        if (messageText.equals("/start")) {
-            return "Ласкаво просимо! Використовуйте кнопки нижче для взаємодії з ботом.";
+
+        if (usersWaitingApiKey.contains(userId) && !messageText.equals("/stop")) {
+            return handleApiKeyMessage(userId, messageText);
         }
 
-        if (messageText.equals("Перевірити statusCode аукціону")) {
-            log.info("{} {} is checking auction status", userId, username);
-            responseText = prozorroService.manualCheckApiResponse();
-        }
-
-        if (messageText.equals("Перевірити к-сть обʼєктів")) {
-            LocalDate startDate = LocalDate.of(2022, 1, 1);
-            //LocalDate endDate = LocalDate.now();
-            LocalDate endDate = LocalDate.of(2022,2,1);
-
-            List<String> dates = startDate.datesUntil(endDate.plusDays(1))
-                    .map(LocalDate::toString)
-                    .collect(Collectors.toList());
-            responseText = "Кількість обʼєктів станом на " + String.valueOf(endDate) + ": " + String.valueOf(prozorroService.getTotalObjectCount(dates));
-        } //else responseText = "Невідома команда";
-
-        if (usersWaitingApiKey.contains(userId)) {
-            try {
-                monobankService.addApiKey(userId, messageText);
-                responseText = "Ключ успішно доданий.";
+        switch (messageText) {
+            case "/start":
+                return "Ласкаво просимо! Використовуйте кнопки нижче для взаємодії з ботом.";
+            case "Перевірити statusCode аукціону":
+                return checkAuctionStatus(userId, username);
+            case "Перевірити к-сть обʼєктів":
+                return checkObjectCount();
+            case "Перевірити поточний баланс":
+                return checkMonoBalance(userId);
+            case "Витрати в поточному місяці":
+                return checkSpendsCurrentMonth(userId);
+            case "/stop":
                 usersWaitingApiKey.remove(userId);
-            } catch (IllegalArgumentException e) {
-                responseText = "Невірний формат ключа. Будь ласка, спробуйте ще раз. " +
-                        "Або надішліть /stop якщо не бажаєте продовжувати";
-            }
+                return "Операцію по додаванню ключа скасовано";
+            default:
+                return "Невідома команда";
         }
+    }
 
-        if (messageText.equals("Перевірити поточний баланс")) {
-            responseText = monobankService.checkMonoBalance(userId);
-            if (responseText.contains("Ви не додали свій ключ.")) {
-                usersWaitingApiKey.add(userId);
-            }
-        }
-
-        if (messageText.equals("Витрати в поточному місяці")) {
-            responseText = monobankService.checkSpendsCurrentMonth(userId);
-            if (responseText.contains("Ви не додали свій ключ.")) {
-                usersWaitingApiKey.add(userId);
-            }
-        }
-
-
-
-        if (messageText.equals("/stop")) {
+    private String handleApiKeyMessage(long userId, String messageText) {
+        try {
+            monobankService.addApiKey(userId, messageText);
             usersWaitingApiKey.remove(userId);
-            responseText = "Операцію по додаванню ключа скасовано";
+            return "Ключ успішно доданий.";
+        } catch (IllegalArgumentException e) {
+            return "Невірний формат ключа. Будь ласка, спробуйте ще раз. Або надішліть /stop якщо не бажаєте продовжувати";
         }
+    }
 
+    private String checkAuctionStatus(long userId, String username) {
+        log.info("{} {} is checking auction status", userId, username);
+        return prozorroService.manualCheckApiResponse();
+    }
+
+    private String checkObjectCount() {
+        LocalDate startDate = LocalDate.of(2022, 1, 1);
+        //LocalDate endDate = LocalDate.now();
+        LocalDate endDate = LocalDate.of(2022, 2, 1);
+
+        List<String> dates = startDate.datesUntil(endDate.plusDays(1))
+                .map(LocalDate::toString)
+                .collect(Collectors.toList());
+        return "Кількість обʼєктів станом на " + endDate + ": " + prozorroService.getTotalObjectCount(dates);
+    }
+
+    private String checkMonoBalance(long userId) {
+        String responseText = monobankService.checkMonoBalance(userId);
+        if (responseText.contains("Ви не додали свій ключ.")) {
+            usersWaitingApiKey.add(userId);
+        }
         return responseText;
     }
 
+    private String checkSpendsCurrentMonth(long userId) {
+        String responseText = monobankService.checkSpendsCurrentMonth(userId);
+        if (responseText.contains("Ви не додали свій ключ.")) {
+            usersWaitingApiKey.add(userId);
+        }
+        return responseText;
+    }
 
 }
 

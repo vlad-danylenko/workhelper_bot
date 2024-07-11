@@ -1,7 +1,11 @@
 package com.danylenko.workhelper.service;
 
-import com.danylenko.workhelper.model.TelegramKey;
-import com.danylenko.workhelper.repository.TelegramKeyRepository;
+import com.danylenko.workhelper.model.MonoKey;
+import com.danylenko.workhelper.model.MonoTransaction;
+import com.danylenko.workhelper.model.MonoClient;
+import com.danylenko.workhelper.repository.MonoTransactionRepository;
+import com.danylenko.workhelper.repository.MonoClientRepository;
+import com.danylenko.workhelper.repository.MonoKeyRepository;
 import com.danylenko.workhelper.service.enums.CardType;
 import com.danylenko.workhelper.service.util.BalanceFormat;
 import com.danylenko.workhelper.service.util.EpochConverter;
@@ -19,19 +23,28 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 @Slf4j
 public class MonobankServiceImpl implements MonobankService {
     private static final String API_URL = "https://api.monobank.ua/personal/client-info";
     private final EpochConverter epochConverter;
-    private final TelegramKeyRepository telegramKeyRepository;
+    private final MonoKeyRepository monoKeyRepository;
+    private final MonoClientRepository monoClientRepository;
+    private final MonoTransactionRepository monoTransactionRepository;
+
     private final BalanceFormat balanceFormat;
 
     @Autowired
-    public MonobankServiceImpl(EpochConverter epochConverter, TelegramKeyRepository telegramKeyRepository, BalanceFormat balanceFormat) {
+    public MonobankServiceImpl(EpochConverter epochConverter, MonoKeyRepository monoKeyRepository, MonoClientRepository monoClientRepository, MonoTransactionRepository monoTransactionRepository, BalanceFormat balanceFormat) {
         this.epochConverter = epochConverter;
-        this.telegramKeyRepository = telegramKeyRepository;
+        this.monoKeyRepository = monoKeyRepository;
+        this.monoClientRepository = monoClientRepository;
+        this.monoTransactionRepository = monoTransactionRepository;
         this.balanceFormat = balanceFormat;
     }
 
@@ -93,9 +106,18 @@ public class MonobankServiceImpl implements MonobankService {
         long timestamp = epochConverter.getTimeFromFirstDayOfMonth();
         String apiSpendUrl = "https://api.monobank.ua/personal/statement/0/" + timestamp;
         log.info("Generated link: {}", apiSpendUrl);
+        Map<String, MonoTransaction> transactions = new HashMap<>();
+        StringBuilder responseBuilder = new StringBuilder("Сума витрат в цьому місяці: ");
+        int totalSpendSum = 0;
+        int totalTopUpSum = 0;
 
-        StringBuilder responseBuilder = new StringBuilder("Сума витрат в цьому місяці:\n");
-        int totalSum = 0;
+        // Find TelegramClient by userId
+        MonoKey monoKey = monoKeyRepository.findById(String.valueOf(userId)).orElse(null);
+        if (monoKey == null) {
+            log.warn("No TelegramKey found for user ID: {}", userId);
+        }
+
+        MonoClient monoClient = monoKey.getMonoClient();
 
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
             HttpGet request = new HttpGet(apiSpendUrl);
@@ -108,10 +130,31 @@ public class MonobankServiceImpl implements MonobankService {
 
                 for (int i = 0; i < operations.size(); i++) {
                     JsonObject operation = operations.get(i).getAsJsonObject();
-                    int operationAmount = operation.get("operationAmount").getAsInt();
-                    totalSum += operationAmount;
+                    int operationAmount = operation.get("operationAmount").getAsInt(); // assuming the correct field name is "amount"
+                    String operationId = operation.get("id").getAsString();
+                    LocalDateTime transactionTime = LocalDateTime.ofEpochSecond(operation.get("time").getAsLong(), 0, ZoneOffset.UTC).plusHours(3);
+
+
+                    // Create and store MonoTransaction in the map
+                    MonoTransaction monoTransaction = new MonoTransaction();
+                    monoTransaction.setMonoClient(monoClient.getClientId());
+                    monoTransaction.setOperationId(operationId);
+                    monoTransaction.setTransactionTime(transactionTime);
+                    monoTransaction.setOperationAmount(operationAmount);
+
+                    transactions.put(operationId, monoTransaction);
+
+                    if (operationAmount < 0 ) {
+                        totalSpendSum += operationAmount;
+                    } else if (operationAmount > 0) {
+                        totalTopUpSum += operationAmount;
+                    }
                 }
-                responseBuilder.append(balanceFormat.formatBalance(totalSum))
+                monoTransactionRepository.saveAll(transactions.values());
+                responseBuilder.append(balanceFormat.formatBalance(totalSpendSum))
+                        .append(" грн.\n")
+                        .append("Поповнень карти у цьому місяці: ")
+                        .append(balanceFormat.formatBalance(totalTopUpSum))
                         .append(" грн.");
             }
         } catch (IOException | ParseException e) {
@@ -126,11 +169,36 @@ public class MonobankServiceImpl implements MonobankService {
             log.info("Invalid API key format: " + apiKey);
             throw new IllegalArgumentException("Invalid API key format");
         }
-        TelegramKey telegramKey = new TelegramKey();
-        telegramKey.setUserId(String.valueOf(userId));
-        telegramKey.setApiKey(apiKey);
-        telegramKeyRepository.save(telegramKey);
-        log.info("API key for user {} has been added/updated.", userId);
+        MonoClient monoClient = getTelegramClientInfo(apiKey);
+        monoClientRepository.save(monoClient);
+
+        MonoKey monoKey = new MonoKey();
+        monoKey.setUserId(String.valueOf(userId));
+        monoKey.setApiKey(apiKey);
+        monoKey.setMonoClient(monoClient);
+        monoKeyRepository.save(monoKey);
+        log.info("API key for user {} has been added/updated with client ID: {} and name: {}", userId, monoClient.getClientId(), monoClient.getName());
+    }
+
+    @Override
+    public MonoClient getTelegramClientInfo(String apiKey) {
+        MonoClient monoClient = new MonoClient();
+        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
+            HttpGet request = new HttpGet(API_URL);
+            request.addHeader("X-TOKEN", apiKey);
+
+            try (CloseableHttpResponse response = httpClient.execute(request)) {
+                String jsonResponse = EntityUtils.toString(response.getEntity());
+                JsonObject jsonObject = new Gson().fromJson(jsonResponse, JsonObject.class);
+
+                monoClient.setClientId(jsonObject.get("clientId").getAsString());
+                monoClient.setName(jsonObject.get("name").getAsString());
+            }
+        } catch (IOException | ParseException e) {
+            log.error("Error retrieving client information for API key: {}", apiKey, e);
+            throw new RuntimeException("Failed to retrieve client information", e);
+        }
+        return monoClient;
     }
 
     @Override
@@ -139,8 +207,8 @@ public class MonobankServiceImpl implements MonobankService {
     }
 
     private String defineApiKey(long userId) {
-        TelegramKey telegramKey = telegramKeyRepository.findByUserId(String.valueOf(userId));
-        return telegramKey != null ? telegramKey.getApiKey() : null;
+        MonoKey monoKey = monoKeyRepository.findByUserId(String.valueOf(userId));
+        return monoKey != null ? monoKey.getApiKey() : null;
     }
 
 
