@@ -13,7 +13,6 @@ import java.time.LocalDateTime;
 @Entity
 @NoArgsConstructor
 @Table(name = "mono_transaction")
-//@IdClass(MonoTransactionId.class)
 public class MonoTransaction {
     @Id
     @Column(name = "operation_id")

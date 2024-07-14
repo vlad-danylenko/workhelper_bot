@@ -1,11 +1,14 @@
 package com.danylenko.workhelper.service;
 
+import com.danylenko.workhelper.dto.ObjectCountDto;
 import com.danylenko.workhelper.mapper.ObjectCountMapper;
 import com.danylenko.workhelper.model.ObjectCount;
 import com.danylenko.workhelper.repository.ObjectCountRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.IterableUtils;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
@@ -21,17 +24,19 @@ import java.util.stream.Collectors;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class ProzorroServiceImpl implements ProzorroService {
 
     @Autowired
     private MessageService messageService;
     private final ObjectCountRepository objectCountRepository;
-
-    public ProzorroServiceImpl(ObjectCountRepository objectCountRepository) {
-        this.objectCountRepository = objectCountRepository;
-    }
+    private final ObjectCountMapper objectCountMapper;
 
     private boolean isResponseSuccess = false;
+
+//    public ProzorroServiceImpl(ObjectCountRepository objectCountRepository) {
+//        this.objectCountRepository = objectCountRepository;
+//    }
 
     public void checkApiResponse() {
         if (!isResponseSuccess) {
@@ -108,9 +113,7 @@ public class ProzorroServiceImpl implements ProzorroService {
     public int getTotalObjectCount(List<String> dates) {
         int totalObjectCount = 0;
         Map<String, Integer> objectCountsMap = loadObjectCountsFromDatabase(dates);
-//        for (String date : dates) {
-//            totalObjectCount += checkObjectCountForDate(date);
-//        }
+
         for (String date : dates) {
             if (objectCountsMap.containsKey(date)) {
                 totalObjectCount += objectCountsMap.get(date);
@@ -127,6 +130,12 @@ public class ProzorroServiceImpl implements ProzorroService {
 
         return objectCountEntities.stream()
                 .collect(Collectors.toMap(ObjectCount::getHday, ObjectCount::getCnt));
+    }
+
+    public List<ObjectCountDto> getAllObjectCountRecords() {
+        var objects = IterableUtils.toList(objectCountRepository.findAll());
+        return objects.stream().map(objectCountMapper.INSTANCE::toDto)
+                .toList();
     }
 
 

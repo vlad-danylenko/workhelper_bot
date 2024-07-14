@@ -1,5 +1,7 @@
 package com.danylenko.workhelper.service;
 
+import com.danylenko.workhelper.dto.ObjectCountDto;
+
 import java.util.List;
 
 public interface ProzorroService {
@@ -8,5 +10,6 @@ public interface ProzorroService {
     String manualCheckApiResponse();
     int checkObjectCountForDate(String data);
     int getTotalObjectCount(List<String> dates);
+    List<ObjectCountDto> getAllObjectCountRecords();
 
 }
