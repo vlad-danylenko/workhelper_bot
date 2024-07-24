@@ -1,6 +1,6 @@
 package com.danylenko.workhelper.service;
 
-import com.danylenko.workhelper.model.MonoClient;
+import com.danylenko.workhelper.entity.MonoClient;
 
 public interface MonobankService {
     String checkMonoBalance(long userId);

@@ -1,7 +1,7 @@
 package com.danylenko.workhelper.mapper;
 
 import com.danylenko.workhelper.dto.ObjectCountDto;
-import com.danylenko.workhelper.model.ObjectCount;
+import com.danylenko.workhelper.entity.ObjectCount;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;

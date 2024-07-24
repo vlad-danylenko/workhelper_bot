@@ -40,8 +40,10 @@ public class MessageHandlerImpl implements MessageHandler {
         switch (messageText) {
             case "/start":
                 return "Ласкаво просимо! Використовуйте кнопки нижче для взаємодії з ботом.";
-            case "Перевірити statusCode аукціону":
-                return checkAuctionStatus(userId, username);
+//            case "Перевірити statusCode аукціону":
+//                return checkAuctionStatus(userId, username);
+            case "largePrivatization-english":
+                return checkPrivatizationResponse(userId, username);
             case "Перевірити к-сть обʼєктів":
                 return checkObjectCount();
             case "Перевірити поточний баланс":
@@ -66,9 +68,13 @@ public class MessageHandlerImpl implements MessageHandler {
         }
     }
 
-    private String checkAuctionStatus(long userId, String username) {
-        log.info("{} {} is checking auction status", userId, username);
-        return prozorroService.manualCheckApiResponse();
+//    private String checkAuctionStatus(long userId, String username) {
+//        log.info("{} {} is checking auction status", userId, username);
+//        return prozorroService.manualCheckApiResponse();
+//    }
+    private String checkPrivatizationResponse (long userId, String username) {
+        log.info("{} {} is checking large privatization response", userId, username);
+        return prozorroService.manualCheckApiPayload();
     }
 
     private String checkObjectCount() {

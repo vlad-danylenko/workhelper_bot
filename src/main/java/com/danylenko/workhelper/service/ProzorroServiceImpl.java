@@ -2,18 +2,27 @@ package com.danylenko.workhelper.service;
 
 import com.danylenko.workhelper.dto.ObjectCountDto;
 import com.danylenko.workhelper.mapper.ObjectCountMapper;
-import com.danylenko.workhelper.model.ObjectCount;
+import com.danylenko.workhelper.entity.ObjectCount;
 import com.danylenko.workhelper.repository.ObjectCountRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.IterableUtils;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.ParseException;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
+import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -38,24 +47,77 @@ public class ProzorroServiceImpl implements ProzorroService {
 //        this.objectCountRepository = objectCountRepository;
 //    }
 
-    public void checkApiResponse() {
+//    public void checkApiResponse() {
+//        if (!isResponseSuccess) {
+//            try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
+//                String url = "https://procedure.prozorro.sale/api/search/large_announcement/bySystemDateModified/2024-07-01";
+//                HttpGet request = new HttpGet(url);
+//                try (CloseableHttpResponse response = httpClient.execute(request)) {
+//                    log.info("Scheduler made request to {}", url);
+//                    String responseBody = String.valueOf(response.getCode());
+//                    log.info("Response code is {}", responseBody);
+//                    if (responseBody.equals("204")) {
+//                    } else if (responseBody.equals("200")) {
+//                        messageService.sendMessage(85262401L, "Status 200 OK. Check the content. It's available now", false);
+//                        isResponseSuccess = true;
+//                    } else {
+//                        log.error("Something went wrong");
+//                        messageService.sendMessage(85262401L, "Something went wrong", false);
+//                    }
+//                } catch (IOException e) {
+//                    e.printStackTrace();
+//                }
+//
+//            } catch (IOException e) {
+//                throw new RuntimeException(e);
+//            }
+//        }
+//    }
+    public void checkApiPayload() {
         if (!isResponseSuccess) {
             try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-                String url = "https://procedure.prozorro.sale/api/search/large_announcement/bySystemDateModified/2024-07-01";
-                HttpGet request = new HttpGet(url);
+                String url = "https://procedure.prozorro.sale/api/search/procedures";
+                HttpPost request = new HttpPost(url);
+
+                // JSON body
+                String jsonBody = """
+            {
+                "page": 1,
+                "limit": 10,
+                "filters": [
+                    {
+                        "field": "sellingMethod",
+                        "operator": "in",
+                        "value": [
+                            "largePrivatization-english"
+                        ]
+                    }
+                ]
+            }
+            """;
+
+                StringEntity entity = new StringEntity(jsonBody, ContentType.APPLICATION_JSON);
+                request.setEntity(entity);
+
                 try (CloseableHttpResponse response = httpClient.execute(request)) {
                     log.info("Scheduler made request to {}", url);
-                    String responseBody = String.valueOf(response.getCode());
-                    log.info("Response code is {}", responseBody);
-                    if (responseBody.equals("204")) {
-                    } else if (responseBody.equals("200")) {
-                        messageService.sendMessage(85262401L, "Status 200 OK. Check the content. It's available now", false);
+                    String responseBody = EntityUtils.toString(response.getEntity(), "UTF-8");
+                    log.info("Response body is {}", responseBody);
+                    JsonObject jsonResponse = JsonParser.parseString(responseBody).getAsJsonObject();
+                    JsonArray payload = jsonResponse.getAsJsonArray("payload");
+                    if (payload.size() == 0) {
+                        log.info("Payload empty: {}",payload);
+                    } else if (payload.size() >= 1) {
+                        //messageService.sendMessage(85262401L, "Status 200 OK. Check the content. It's available now", false);
+                        log.info("Payload: {}",payload);
+                        messageService.sendMessage(85262401L, "Check https://procedure.prozorro.sale/api/search/procedures\n" +
+                                "\nPayload is present for largePrivatization-english", false);
                         isResponseSuccess = true;
                     } else {
                         log.error("Something went wrong");
-                        messageService.sendMessage(85262401L, "Something went wrong", false);
+                        messageService.sendMessage(137867872L, "Something went wrong", false);
                     }
-                } catch (IOException e) {
+                } catch (IOException | ParseException e) {
                     e.printStackTrace();
                 }
 
@@ -65,24 +127,64 @@ public class ProzorroServiceImpl implements ProzorroService {
         }
     }
 
-    public String manualCheckApiResponse() {
+//    public String manualCheckApiResponse() {
+//        String responseBody = null;
+//        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
+//            String url = "https://procedure.prozorro.sale/api/search/large_announcement/bySystemDateModified/2024-07-01";
+//            HttpGet request = new HttpGet(url);
+//            try (CloseableHttpResponse response = httpClient.execute(request)) {
+//                log.info("Successfully made request to {}", url);
+//                responseBody = String.valueOf(response.getCode());
+//                log.info("Response code is {}", responseBody);
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
+//
+//        } catch (IOException e) {
+//            throw new RuntimeException(e);
+//        }
+//        return responseBody;
+//    }
+public String manualCheckApiPayload() {
         String responseBody = null;
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-            String url = "https://procedure.prozorro.sale/api/search/large_announcement/bySystemDateModified/2024-07-01";
-            HttpGet request = new HttpGet(url);
+            String url = "https://procedure.prozorro.sale/api/search/procedures";
+            HttpPost request = new HttpPost(url);
+
+            // JSON body
+            String jsonBody = """
+            {
+                "page": 1,
+                "limit": 10,
+                "filters": [
+                    {
+                        "field": "sellingMethod",
+                        "operator": "in",
+                        "value": [
+                            "largePrivatization-english"
+                        ]
+                    }
+                ]
+            }
+            """;
+
+            StringEntity entity = new StringEntity(jsonBody, ContentType.APPLICATION_JSON);
+            request.setEntity(entity);
+
             try (CloseableHttpResponse response = httpClient.execute(request)) {
-                log.info("Successfully made request to {}", url);
-                responseBody = String.valueOf(response.getCode());
-                log.info("Response code is {}", responseBody);
-            } catch (IOException e) {
+                log.info("Scheduler made request to {}", url);
+                responseBody = EntityUtils.toString(response.getEntity(), "UTF-8");
+                log.info("Response body is {}", responseBody);
+
+            } catch (IOException | ParseException e) {
                 e.printStackTrace();
             }
 
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        return responseBody;
-    }
+    return responseBody;
+}
 
     public int checkObjectCountForDate(String date) {
         String responseBody = null;

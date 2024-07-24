@@ -1,8 +1,8 @@
 package com.danylenko.workhelper.service;
 
-import com.danylenko.workhelper.model.MonoKey;
-import com.danylenko.workhelper.model.MonoTransaction;
-import com.danylenko.workhelper.model.MonoClient;
+import com.danylenko.workhelper.entity.MonoKey;
+import com.danylenko.workhelper.entity.MonoTransaction;
+import com.danylenko.workhelper.entity.MonoClient;
 import com.danylenko.workhelper.repository.MonoTransactionRepository;
 import com.danylenko.workhelper.repository.MonoClientRepository;
 import com.danylenko.workhelper.repository.MonoKeyRepository;

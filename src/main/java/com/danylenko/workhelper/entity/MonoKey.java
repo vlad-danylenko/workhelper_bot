@@ -1,4 +1,4 @@
-package com.danylenko.workhelper.model;
+package com.danylenko.workhelper.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

@@ -1,6 +1,6 @@
 package com.danylenko.workhelper.repository;
 
-import com.danylenko.workhelper.model.MonoKey;
+import com.danylenko.workhelper.entity.MonoKey;
 import org.springframework.data.repository.CrudRepository;
 
 public interface MonoKeyRepository extends CrudRepository<MonoKey,String> {

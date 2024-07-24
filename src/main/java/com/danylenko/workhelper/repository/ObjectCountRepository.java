@@ -1,6 +1,6 @@
 package com.danylenko.workhelper.repository;
 
-import com.danylenko.workhelper.model.ObjectCount;
+import com.danylenko.workhelper.entity.ObjectCount;
 import org.springframework.data.repository.CrudRepository;
 
 import java.util.List;

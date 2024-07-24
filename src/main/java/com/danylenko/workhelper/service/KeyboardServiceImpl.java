@@ -16,7 +16,7 @@ public class KeyboardServiceImpl implements KeyboardService {
         List<KeyboardRow> keyboardRows = new ArrayList<>();
 
         KeyboardRow row1 = new KeyboardRow();
-        row1.add(new KeyboardButton("Перевірити statusCode аукціону"));
+        row1.add(new KeyboardButton("largePrivatization-english"));
         keyboardRows.add(row1);
 
         KeyboardRow row2 = new KeyboardRow();

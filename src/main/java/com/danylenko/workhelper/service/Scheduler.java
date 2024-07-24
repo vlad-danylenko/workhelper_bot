@@ -11,8 +11,8 @@ public class Scheduler {
     //@Scheduled(cron = "0 0 11 * * ?")
     //@Scheduled(cron = "0 */2 * * * ?")
 
-    @Scheduled(cron = "0 */10 * * * ?")
+    @Scheduled(cron = "0 */5 * * * ?")
     public void checkApiResponse() {
-        notificationService.checkApiResponse();
+        notificationService.checkApiPayload();
     }
 }
